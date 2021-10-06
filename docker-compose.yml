@@ -1,0 +1,71 @@
+version: "3"
+
+services:
+  postgres:
+    image: postgres:9.6
+    container_name: postgesql
+    networks:
+      - devsecops-network
+    restart: always
+    environment:
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: dbpassword
+    volumes:
+      - '/var/postgres-data:/var/lib/postgresql/data'
+
+  jenkins:
+    image: jenkins/jenkins:latest
+    container_name: jenkins
+    networks:
+      - devsecops-network
+    restart: always
+    volumes:
+      - '/var/jenkins_home:/var/jenkins_home'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    ports:
+      - "8080:8080"
+
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    container_name: gitlab
+    networks:
+      - devsecops-network
+    restart: always
+    ports:
+      - "9088:80"
+    volumes:
+      - '/opt/gitlab/config:/etc/gitlab'
+      - '/opt/gitlab/logs:/var/log/gitlab'
+      - '/opt/gitlab/data:/var/opt/gitlab'
+
+  sonarqube:
+    image: sonarqube:lts
+    container_name: sonarqube
+    networks:
+      - devsecops-network
+    restart: always
+    ports:
+      - "9000:9000"
+    environment:
+      SONARQUBE_JDBC_USERNAME: dbuser
+      SONARQUBE_JDBC_PASSWORD: dbpassword
+      SONARQUBE_JDBC_URL: "jdbc:postgresql://postgres:5432/sonar"
+    links:
+    - db:postgres.docker
+    - gitlab:gitlab.docker
+    depends_on: 
+      - postgres
+
+  artifactory:
+    image: docker.bintray.io/jfrog/artifactory-oss:latest
+    container_name: jfrogartifactory
+    restart: always
+    ports:
+      - "8082:8082"
+    volumes:
+      - '/opt/artifactory/data:/var/opt/jfrog/artifactory/data'
+      - '/opt/artifactory/logs:/var/opt/jfrog/artifactory/logs'
+      - '/opt/artifactory/backup:/var/opt/jfrog/artifactory/backup'
+
+networks:
+  devsecops-network:
